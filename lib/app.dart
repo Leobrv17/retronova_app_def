@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/widgets/main_navigation.dart';
+import 'presentation/widgets/auth_wrapper.dart';
 
 class ArcadeApp extends StatelessWidget {
   const ArcadeApp({super.key});
@@ -8,9 +8,9 @@ class ArcadeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Arcade App',
+      title: 'Retronova App',
       theme: AppTheme.lightTheme,
-      home: const MainNavigation(),
+      home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
     );
   }
