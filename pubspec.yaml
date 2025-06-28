@@ -15,7 +15,6 @@ dependencies:
   # Firebase dependencies - versions plus récentes
   firebase_core: ^3.8.1
   firebase_auth: ^5.3.3
-  cloud_firestore: ^5.5.1
 
   # State management
   provider: ^6.1.5

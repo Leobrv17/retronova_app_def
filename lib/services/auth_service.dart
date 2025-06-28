@@ -1,9 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Obtenir l'utilisateur actuel
   User? get currentUser => _auth.currentUser;
@@ -23,15 +21,17 @@ class AuthService {
         password: password,
       );
 
-      // Créer le profil utilisateur dans Firestore
+      // Mettre à jour le nom d'affichage
       if (result.user != null) {
-        await _createUserProfile(result.user!, fullName);
         await result.user!.updateDisplayName(fullName);
+        await result.user!.reload();
       }
 
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Erreur inattendue lors de l\'inscription: $e');
     }
   }
 
@@ -48,6 +48,8 @@ class AuthService {
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Erreur inattendue lors de la connexion: $e');
     }
   }
 
@@ -56,7 +58,7 @@ class AuthService {
     try {
       await _auth.signOut();
     } catch (e) {
-      throw Exception('Erreur lors de la déconnexion');
+      throw Exception('Erreur lors de la déconnexion: $e');
     }
   }
 
@@ -66,54 +68,8 @@ class AuthService {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
-    }
-  }
-
-  // Créer le profil utilisateur dans Firestore
-  Future<void> _createUserProfile(User user, String fullName) async {
-    try {
-      await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'email': user.email,
-        'fullName': fullName,
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastLogin': FieldValue.serverTimestamp(),
-      });
     } catch (e) {
-      throw Exception('Erreur lors de la création du profil utilisateur');
-    }
-  }
-
-  // Obtenir les données utilisateur depuis Firestore
-  Future<Map<String, dynamic>?> getUserData() async {
-    try {
-      if (currentUser != null) {
-        final DocumentSnapshot doc = await _firestore
-            .collection('users')
-            .doc(currentUser!.uid)
-            .get();
-
-        if (doc.exists) {
-          return doc.data() as Map<String, dynamic>?;
-        }
-      }
-      return null;
-    } catch (e) {
-      throw Exception('Erreur lors de la récupération des données utilisateur');
-    }
-  }
-
-  // Mettre à jour le dernier login
-  Future<void> updateLastLogin() async {
-    try {
-      if (currentUser != null) {
-        await _firestore.collection('users').doc(currentUser!.uid).update({
-          'lastLogin': FieldValue.serverTimestamp(),
-        });
-      }
-    } catch (e) {
-      // Log silencieux, ne pas bloquer l'application
-      print('Erreur mise à jour dernier login: $e');
+      throw Exception('Erreur lors de l\'envoi de l\'email: $e');
     }
   }
 
@@ -136,6 +92,8 @@ class AuthService {
         return 'Trop de tentatives. Veuillez réessayer plus tard.';
       case 'operation-not-allowed':
         return 'Cette opération n\'est pas autorisée.';
+      case 'network-request-failed':
+        return 'Erreur de connexion. Vérifiez votre connexion internet.';
       default:
         return 'Une erreur est survenue: ${e.message}';
     }

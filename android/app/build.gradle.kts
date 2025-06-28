@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.retronova_app"
-        minSdk = 21
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

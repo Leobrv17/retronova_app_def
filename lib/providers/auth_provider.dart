@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
@@ -6,43 +7,46 @@ class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
 
   User? _user;
-  Map<String, dynamic>? _userData;
-  bool _isLoading = false;
+  bool _isLoading = true;
   String? _errorMessage;
 
   // Getters
   User? get user => _user;
-  Map<String, dynamic>? get userData => _userData;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
 
   AuthProvider() {
-    // Écouter les changements d'état d'authentification
-    _authService.authStateChanges.listen(_onAuthStateChanged);
+    _initializeAuth();
+  }
+
+  // Initialiser l'authentification
+  Future<void> _initializeAuth() async {
+    try {
+      // Écouter les changements d'état d'authentification
+      _authService.authStateChanges.listen(_onAuthStateChanged);
+    } catch (e) {
+      _setError('Erreur d\'initialisation: $e');
+      _setLoading(false);
+    }
   }
 
   // Gestion des changements d'état d'authentification
   void _onAuthStateChanged(User? user) async {
-    _user = user;
-    _clearError();
-
-    if (user != null) {
-      await _loadUserData();
-      await _authService.updateLastLogin();
-    } else {
-      _userData = null;
-    }
-
-    notifyListeners();
-  }
-
-  // Charger les données utilisateur
-  Future<void> _loadUserData() async {
     try {
-      _userData = await _authService.getUserData();
+      _user = user;
+      _clearError();
+
+      // Si vous voulez intégrer votre API plus tard,
+      // c'est ici que vous pourrez charger les données utilisateur
+      if (user != null) {
+        // TODO: Intégrer votre API ici
+        // await _loadUserDataFromYourAPI();
+      }
     } catch (e) {
-      _setError('Erreur lors du chargement des données utilisateur');
+      _setError('Erreur lors du chargement: $e');
+    } finally {
+      _setLoading(false);
     }
   }
 
@@ -82,7 +86,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(true);
       await _authService.signOut();
     } catch (e) {
-      _setError('Erreur lors de la déconnexion');
+      _setError('Erreur lors de la déconnexion: $e');
     } finally {
       _setLoading(false);
     }
@@ -96,14 +100,43 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
-  // Méthode utilitaire pour gérer les actions d'authentification
+  // Méthode utilitaire pour gérer les actions d'authentification avec timeout
   Future<bool> _performAuthAction(Future<bool> Function() action) async {
     try {
       _setLoading(true);
       _clearError();
-      return await action();
+
+      // Utiliser un Completer pour gérer le timeout manuellement
+      final completer = Completer<bool>();
+      late Timer timeoutTimer;
+
+      // Démarrer l'action
+      action().then((result) {
+        if (!completer.isCompleted) {
+          timeoutTimer.cancel();
+          completer.complete(result);
+        }
+      }).catchError((error) {
+        if (!completer.isCompleted) {
+          timeoutTimer.cancel();
+          completer.completeError(error);
+        }
+      });
+
+      // Démarrer le timer de timeout
+      timeoutTimer = Timer(const Duration(seconds: 30), () {
+        if (!completer.isCompleted) {
+          completer.completeError(TimeoutException('Timeout', const Duration(seconds: 30)));
+        }
+      });
+
+      return await completer.future;
     } catch (e) {
-      _setError(e.toString());
+      if (e is TimeoutException) {
+        _setError('L\'opération a pris trop de temps. Veuillez réessayer.');
+      } else {
+        _setError(e.toString());
+      }
       return false;
     } finally {
       _setLoading(false);
@@ -112,18 +145,23 @@ class AuthProvider with ChangeNotifier {
 
   // Gestion des états
   void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
+    if (_isLoading != loading) {
+      _isLoading = loading;
+      notifyListeners();
+    }
   }
 
   void _setError(String error) {
     _errorMessage = error;
+    print('AuthProvider Error: $error');
     notifyListeners();
   }
 
   void _clearError() {
-    _errorMessage = null;
-    notifyListeners();
+    if (_errorMessage != null) {
+      _errorMessage = null;
+      notifyListeners();
+    }
   }
 
   // Nettoyer l'erreur manuellement

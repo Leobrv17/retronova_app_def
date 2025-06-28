@@ -22,7 +22,6 @@ class ProfileScreen extends StatelessWidget {
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           final user = authProvider.user;
-          final userData = authProvider.userData;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -35,7 +34,7 @@ class ProfileScreen extends StatelessWidget {
                 CircleAvatar(
                   radius: 60,
                   backgroundColor: Colors.deepPurple.withOpacity(0.1),
-                  child: Icon(
+                  child: const Icon(
                     Icons.person,
                     size: 60,
                     color: Colors.deepPurple,
@@ -46,7 +45,7 @@ class ProfileScreen extends StatelessWidget {
 
                 // Nom utilisateur
                 Text(
-                  userData?['fullName'] ?? user?.displayName ?? 'Utilisateur',
+                  user?.displayName ?? 'Utilisateur',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -83,21 +82,49 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 16),
 
                         _buildInfoRow('Email', user?.email ?? ''),
-                        _buildInfoRow('Nom', userData?['fullName'] ?? 'Non défini'),
+                        _buildInfoRow('Nom', user?.displayName ?? 'Non défini'),
                         _buildInfoRow(
-                          'Membre depuis',
-                          userData?['createdAt'] != null
-                              ? _formatDate(userData!['createdAt'])
+                          'Compte créé',
+                          user?.metadata.creationTime != null
+                              ? _formatDate(user!.metadata.creationTime!)
                               : 'Non défini',
                         ),
                         _buildInfoRow(
                           'Dernière connexion',
-                          userData?['lastLogin'] != null
-                              ? _formatDate(userData!['lastLogin'])
+                          user?.metadata.lastSignInTime != null
+                              ? _formatDate(user!.metadata.lastSignInTime!)
                               : 'Non défini',
+                        ),
+                        _buildInfoRow(
+                          'Email vérifié',
+                          user?.emailVerified == true ? 'Oui' : 'Non',
                         ),
                       ],
                     ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Message d'information
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Les données étendues du profil seront disponibles une fois votre API intégrée.',
+                          style: TextStyle(color: Colors.blue),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -154,21 +181,8 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  String _formatDate(dynamic timestamp) {
-    if (timestamp == null) return 'Non défini';
-
-    try {
-      DateTime date;
-      if (timestamp is DateTime) {
-        date = timestamp;
-      } else {
-        date = timestamp.toDate();
-      }
-
-      return '${date.day}/${date.month}/${date.year}';
-    } catch (e) {
-      return 'Non défini';
-    }
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   void _showLogoutDialog(BuildContext context) {
