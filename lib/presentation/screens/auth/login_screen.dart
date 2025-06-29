@@ -1,3 +1,4 @@
+// lib/presentation/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
@@ -6,7 +7,9 @@ import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? preFilledEmail;
+
+  const LoginScreen({super.key, this.preFilledEmail});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,6 +22,15 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Pré-remplir l'email si fourni
+    if (widget.preFilledEmail != null) {
+      _emailController.text = widget.preFilledEmail!;
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -29,20 +41,36 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+      // Effacer les erreurs précédentes
+      authProvider.clearError();
+
       final success = await authProvider.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       if (success && mounted) {
+        // Petite attente pour s'assurer que l'état est mis à jour
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        // Forcer la vérification de l'état
+        authProvider.checkAuthState();
+
         // La navigation sera gérée automatiquement par AuthWrapper
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Erreur de connexion'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // En cas d'échec, vérifier si c'est parce que l'utilisateur est déjà connecté
+        if (authProvider.isAuthenticated) {
+          // Si l'utilisateur est déjà connecté, forcer la navigation
+          print('User already authenticated, forcing navigation');
+          authProvider.checkAuthState();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authProvider.errorMessage ?? 'Erreur de connexion'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -80,12 +108,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 8),
 
-                const Text(
-                  'Connectez-vous pour accéder à vos jeux',
+                Text(
+                  widget.preFilledEmail != null
+                      ? 'Bienvenue ! Connectez-vous avec votre nouveau compte'
+                      : 'Connectez-vous pour accéder à vos jeux',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.grey,
+                    color: widget.preFilledEmail != null ? Colors.green : Colors.grey,
+                    fontWeight: widget.preFilledEmail != null ? FontWeight.w500 : FontWeight.normal,
                   ),
                 ),
 
@@ -96,10 +127,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: const OutlineInputBorder(),
+                    // Mettre en évidence si pré-rempli
+                    enabledBorder: widget.preFilledEmail != null
+                        ? const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.green, width: 2),
+                    )
+                        : const OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {

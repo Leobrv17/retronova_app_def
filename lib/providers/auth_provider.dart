@@ -1,3 +1,4 @@
+// lib/providers/auth_provider.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +6,7 @@ import '../services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
+  StreamSubscription<User?>? _authStateSubscription;
 
   User? _user;
   bool _isLoading = true;
@@ -20,11 +22,23 @@ class AuthProvider with ChangeNotifier {
     _initializeAuth();
   }
 
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
+  }
+
   // Initialiser l'authentification
-  Future<void> _initializeAuth() async {
+  void _initializeAuth() {
     try {
       // Écouter les changements d'état d'authentification
-      _authService.authStateChanges.listen(_onAuthStateChanged);
+      _authStateSubscription = _authService.authStateChanges.listen(
+        _onAuthStateChanged,
+        onError: (error) {
+          _setError('Erreur d\'authentification: $error');
+          _setLoading(false);
+        },
+      );
     } catch (e) {
       _setError('Erreur d\'initialisation: $e');
       _setLoading(false);
@@ -34,14 +48,19 @@ class AuthProvider with ChangeNotifier {
   // Gestion des changements d'état d'authentification
   void _onAuthStateChanged(User? user) async {
     try {
+      print('Auth state changed: ${user?.uid}'); // Debug
+
       _user = user;
       _clearError();
 
       // Si vous voulez intégrer votre API plus tard,
       // c'est ici que vous pourrez charger les données utilisateur
       if (user != null) {
+        print('User authenticated: ${user.email}'); // Debug
         // TODO: Intégrer votre API ici
         // await _loadUserDataFromYourAPI();
+      } else {
+        print('User signed out'); // Debug
       }
     } catch (e) {
       _setError('Erreur lors du chargement: $e');
@@ -62,6 +81,9 @@ class AuthProvider with ChangeNotifier {
         password: password,
         fullName: fullName,
       );
+
+      // Attendre un peu que l'état se mette à jour
+      await Future.delayed(const Duration(milliseconds: 300));
       return true;
     });
   }
@@ -72,10 +94,20 @@ class AuthProvider with ChangeNotifier {
     required String password,
   }) async {
     return _performAuthAction(() async {
+      // Vérifier si l'utilisateur est déjà connecté avec le même email
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && currentUser.email == email) {
+        print('User already signed in with this email: ${currentUser.email}');
+        return true; // Considérer comme un succès
+      }
+
       await _authService.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Attendre un peu que l'état se mette à jour
+      await Future.delayed(const Duration(milliseconds: 300));
       return true;
     });
   }
@@ -85,6 +117,7 @@ class AuthProvider with ChangeNotifier {
     try {
       _setLoading(true);
       await _authService.signOut();
+      print('User signed out manually'); // Debug
     } catch (e) {
       _setError('Erreur lors de la déconnexion: $e');
     } finally {
@@ -139,7 +172,8 @@ class AuthProvider with ChangeNotifier {
       }
       return false;
     } finally {
-      _setLoading(false);
+      // Ne pas arrêter le loading ici car _onAuthStateChanged le fera
+      // _setLoading(false);
     }
   }
 
@@ -147,6 +181,7 @@ class AuthProvider with ChangeNotifier {
   void _setLoading(bool loading) {
     if (_isLoading != loading) {
       _isLoading = loading;
+      print('Auth loading state: $loading'); // Debug
       notifyListeners();
     }
   }
@@ -167,5 +202,11 @@ class AuthProvider with ChangeNotifier {
   // Nettoyer l'erreur manuellement
   void clearError() {
     _clearError();
+  }
+
+  // Forcer la vérification de l'état actuel
+  void checkAuthState() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    _onAuthStateChanged(currentUser);
   }
 }
