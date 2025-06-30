@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/friend_model.dart';
 import '../models/user_model.dart';
+import '../models/user_search_model.dart';
 import '../services/friend_service.dart';
 
 class FriendProvider with ChangeNotifier {
@@ -9,7 +10,7 @@ class FriendProvider with ChangeNotifier {
 
   List<FriendModel> _friends = [];
   List<FriendshipModel> _friendRequests = [];
-  List<UserModel> _searchResults = [];
+  List<UserSearchResult> _searchResults = []; // CHANGÉ: UserSearchResult pour la recherche
   bool _isLoading = false;
   bool _isSearching = false;
   String? _errorMessage;
@@ -17,7 +18,7 @@ class FriendProvider with ChangeNotifier {
   // Getters
   List<FriendModel> get friends => _friends;
   List<FriendshipModel> get friendRequests => _friendRequests;
-  List<UserModel> get searchResults => _searchResults;
+  List<UserSearchResult> get searchResults => _searchResults; // CHANGÉ: UserSearchResult
   bool get isLoading => _isLoading;
   bool get isSearching => _isSearching;
   String? get errorMessage => _errorMessage;
@@ -64,9 +65,12 @@ class FriendProvider with ChangeNotifier {
       _setSearching(true);
       _clearError();
 
+      print('FriendProvider: Searching for "$query"'); // Debug
       _searchResults = await _friendService.searchUsers(query);
+      print('FriendProvider: Found ${_searchResults.length} users'); // Debug
       notifyListeners();
     } catch (e) {
+      print('FriendProvider error: $e'); // Debug
       _setError(e.toString());
     } finally {
       _setSearching(false);

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../providers/friend_provider.dart';
 import '../../../models/friend_model.dart';
+import '../../../models/user_search_model.dart';
 import '../../../models/user_model.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -163,7 +164,7 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
           ),
         ),
         title: Text(
-          friend.fullName,
+          friend.pseudo,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
@@ -244,7 +245,7 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
           ),
         ),
         title: Text(
-          request.requester.fullName,
+          request.requester.pseudo,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
@@ -385,7 +386,7 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildSearchResultCard(UserModel user, FriendProvider friendProvider) {
+  Widget _buildSearchResultCard(UserSearchResult user, FriendProvider friendProvider) {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
@@ -399,7 +400,7 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
           ),
         ),
         title: Text(
-          user.fullName,
+          user.pseudo, // UserSearchResult a une propriété fullName
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
@@ -408,7 +409,7 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
         ),
         trailing: ElevatedButton.icon(
           onPressed: () async {
-            final success = await friendProvider.sendFriendRequest(user.id!);
+            final success = await friendProvider.sendFriendRequest(user.id);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

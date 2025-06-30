@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../core/config/api_config.dart';
 import '../models/friend_model.dart';
 import '../models/user_model.dart';
+import '../models/user_search_model.dart';
 
 class FriendService {
   static final FriendService _instance = FriendService._internal();
@@ -65,24 +66,31 @@ class FriendService {
     }
   }
 
-  // Rechercher des utilisateurs
-  Future<List<UserModel>> searchUsers(String query) async {
+  // Rechercher des utilisateurs - CORRECTION ICI
+  Future<List<UserSearchResult>> searchUsers(String query) async {
     try {
       final token = await _getFirebaseToken();
       if (token == null) throw Exception('Token Firebase non disponible');
-      print(Uri.encodeComponent(query));
+
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/users/search?q=${Uri.encodeComponent(query)}'),
         headers: ApiConfig.getHeaders(token: token),
       );
 
+      print('Search response status: ${response.statusCode}');
+      print('Search response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => UserModel.fromJson(json)).toList();
+        print('Parsed data: $data');
+
+        // L'API renvoie seulement id, pseudo, nom, prenom pour protéger les données
+        return data.map((json) => UserSearchResult.fromJson(json)).toList();
       } else {
         throw Exception('Erreur lors de la recherche');
       }
     } catch (e) {
+      print('Error in searchUsers: $e');
       throw Exception('Erreur de connexion: $e');
     }
   }
