@@ -1,5 +1,5 @@
 class ApiConfig {
-  static const String baseUrl = 'https://www.retronova.fr/api/v1';
+  static const String baseUrl = 'http://10.31.33.47:8000/api/v1';
 
   // Endpoints
   static const String auth = '/auth';
