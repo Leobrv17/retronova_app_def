@@ -78,7 +78,6 @@ class FriendService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        print(data);
         return data.map((json) => UserModel.fromJson(json)).toList();
       } else {
         throw Exception('Erreur lors de la recherche');
