@@ -296,25 +296,25 @@ class _ArcadeScreenState extends State<ArcadeScreen> with TickerProviderStateMix
                 Wrap(
                   spacing: 8,
                   runSpacing: 4,
-                  children: arcade.games.take(3).map((game) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        game.nom,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.green,
-                          fontWeight: FontWeight.w500,
+                  children: [
+                    ...arcade.games.take(3).map((game) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-                    );
-                  }).toList()
-                    ..addAll(arcade.games.length > 3
-                        ? [
+                        child: Text(
+                          game.nom,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    if (arcade.games.length > 3)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
@@ -329,9 +329,8 @@ class _ArcadeScreenState extends State<ArcadeScreen> with TickerProviderStateMix
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                      )
-                    ]
-                        : []),
+                      ),
+                  ],
                 ),
               ],
 

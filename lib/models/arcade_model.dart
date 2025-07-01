@@ -1,4 +1,7 @@
 // lib/models/arcade_model.dart
+import 'dart:math' as math;
+import 'game_model.dart';
+
 class ArcadeModel {
   final int id;
   final String nom;
@@ -39,15 +42,15 @@ class ArcadeModel {
     const toulouseLng = 1.4442;
 
     // Formule de haversine simplifiée pour une estimation
-    final lat1Rad = toulouseLat * (3.14159 / 180);
-    final lat2Rad = latitude * (3.14159 / 180);
-    final deltaLat = (latitude - toulouseLat) * (3.14159 / 180);
-    final deltaLng = (longitude - toulouseLng) * (3.14159 / 180);
+    final lat1Rad = toulouseLat * (math.pi / 180);
+    final lat2Rad = latitude * (math.pi / 180);
+    final deltaLat = (latitude - toulouseLat) * (math.pi / 180);
+    final deltaLng = (longitude - toulouseLng) * (math.pi / 180);
 
-    final a = (deltaLat / 2).sin() * (deltaLat / 2).sin() +
-        lat1Rad.cos() * lat2Rad.cos() *
-            (deltaLng / 2).sin() * (deltaLng / 2).sin();
-    final c = 2 * a.sqrt().asin();
+    final a = math.pow(math.sin(deltaLat / 2), 2) +
+        math.cos(lat1Rad) * math.cos(lat2Rad) *
+            math.pow(math.sin(deltaLng / 2), 2);
+    final c = 2 * math.asin(math.sqrt(a));
     final earthRadius = 6371; // Rayon de la Terre en km
 
     return earthRadius * c;

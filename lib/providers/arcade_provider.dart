@@ -117,13 +117,13 @@ class ArcadeProvider with ChangeNotifier {
   Future<ArcadeModel?> getArcadeById(int arcadeId) async {
     try {
       // D'abord chercher dans la liste locale
-      final localArcade = _arcades.where((a) => a.id == arcadeId).firstOrNull;
-      if (localArcade != null) {
+      try {
+        final localArcade = _arcades.firstWhere((a) => a.id == arcadeId);
         return localArcade;
+      } catch (e) {
+        // Si pas trouvé localement, charger depuis l'API
+        return await _arcadeService.getArcadeById(arcadeId);
       }
-
-      // Sinon, charger depuis l'API
-      return await _arcadeService.getArcadeById(arcadeId);
     } catch (e) {
       print('ArcadeProvider error getting arcade by id: $e');
       _setError(e.toString());
@@ -246,8 +246,12 @@ class ArcadeProvider with ChangeNotifier {
 
   // Obtenir les jeux disponibles sur une borne
   List<GameOnArcadeModel> getGamesForArcade(int arcadeId) {
-    final arcade = _arcades.where((a) => a.id == arcadeId).firstOrNull;
-    return arcade?.games ?? [];
+    try {
+      final arcade = _arcades.firstWhere((a) => a.id == arcadeId);
+      return arcade.games;
+    } catch (e) {
+      return [];
+    }
   }
 
   // Méthodes utilitaires
@@ -278,16 +282,5 @@ class ArcadeProvider with ChangeNotifier {
   void clearError() {
     _clearError();
     notifyListeners();
-  }
-}
-
-// Extension pour ajouter firstOrNull si pas disponible
-extension IterableExtension<T> on Iterable<T> {
-  T? get firstOrNull {
-    final iterator = this.iterator;
-    if (iterator.moveNext()) {
-      return iterator.current;
-    }
-    return null;
   }
 }
