@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/ticket_provider.dart';
 import '../screens/auth/login_screen.dart';
 import 'main_navigation.dart';
 
@@ -33,6 +34,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Si l'utilisateur est connecté, afficher l'application principale
         if (authProvider.isAuthenticated && !authProvider.isLoading) {
           print('User is authenticated, showing main app'); // Debug
+
+          // Charger les données de tickets une fois connecté
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
+            ticketProvider.loadBalance();
+          });
+
           return const MainNavigation();
         }
 
