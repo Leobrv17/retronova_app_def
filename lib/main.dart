@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/friend_provider.dart';
 import 'providers/ticket_provider.dart';
-import 'providers/arcade_provider.dart'; // AJOUTÉ
+import 'providers/arcade_provider.dart';
+import 'providers/score_provider.dart'; // AJOUTÉ
 import 'app.dart';
 
 void main() async {
@@ -20,7 +21,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => FriendProvider()),
         ChangeNotifierProvider(create: (_) => TicketProvider()),
-        ChangeNotifierProvider(create: (_) => ArcadeProvider()), // AJOUTÉ
+        ChangeNotifierProvider(create: (_) => ArcadeProvider()),
+        ChangeNotifierProvider(create: (_) => ScoreProvider()), // AJOUTÉ
       ],
       child: const ArcadeApp(),
     ),
