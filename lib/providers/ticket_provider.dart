@@ -1,7 +1,8 @@
-// lib/providers/ticket_provider.dart
+// lib/providers/ticket_provider.dart - Version étendue
 import 'package:flutter/foundation.dart';
 import '../models/ticket_offer_model.dart';
 import '../models/ticket_purchase_model.dart';
+import '../models/promo_code_model.dart';
 import '../services/ticket_service.dart';
 
 class TicketProvider with ChangeNotifier {
@@ -9,17 +10,21 @@ class TicketProvider with ChangeNotifier {
 
   List<TicketOfferModel> _offers = [];
   List<TicketPurchaseModel> _purchaseHistory = [];
+  List<PromoCodeHistoryItem> _promoHistory = [];
   int _ticketBalance = 0;
   bool _isLoading = false;
   bool _isPurchasing = false;
+  bool _isUsingPromo = false;
   String? _errorMessage;
 
   // Getters
   List<TicketOfferModel> get offers => _offers;
   List<TicketPurchaseModel> get purchaseHistory => _purchaseHistory;
+  List<PromoCodeHistoryItem> get promoHistory => _promoHistory;
   int get ticketBalance => _ticketBalance;
   bool get isLoading => _isLoading;
   bool get isPurchasing => _isPurchasing;
+  bool get isUsingPromo => _isUsingPromo;
   String? get errorMessage => _errorMessage;
 
   // Charger les offres de tickets
@@ -92,12 +97,60 @@ class TicketProvider with ChangeNotifier {
     }
   }
 
+  // NOUVELLES MÉTHODES POUR LES CODES PROMO
+
+  // Utiliser un code promo
+  Future<bool> usePromoCode(String code) async {
+    if (code.trim().isEmpty) {
+      _setError('Veuillez entrer un code promo');
+      return false;
+    }
+
+    try {
+      _setUsingPromo(true);
+      _clearError();
+
+      final result = await _ticketService.usePromoCode(code.trim().toUpperCase());
+
+      // Mettre à jour le solde
+      _ticketBalance = result.newBalance;
+
+      print('TicketProvider: Promo code used successfully, new balance: $_ticketBalance');
+
+      // Recharger l'historique des codes promo
+      await loadPromoHistory();
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('TicketProvider error using promo code: $e');
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setUsingPromo(false);
+    }
+  }
+
+  // Charger l'historique des codes promo
+  Future<void> loadPromoHistory() async {
+    try {
+      _clearError();
+      _promoHistory = await _ticketService.getPromoHistory();
+      print('TicketProvider: Loaded ${_promoHistory.length} promo codes');
+      notifyListeners();
+    } catch (e) {
+      print('TicketProvider error loading promo history: $e');
+      _setError(e.toString());
+    }
+  }
+
   // Charger toutes les données
   Future<void> loadAllData() async {
     await Future.wait([
       loadOffers(),
       loadBalance(),
       loadPurchaseHistory(),
+      loadPromoHistory(),
     ]);
   }
 
@@ -114,6 +167,11 @@ class TicketProvider with ChangeNotifier {
 
   void _setPurchasing(bool purchasing) {
     _isPurchasing = purchasing;
+    notifyListeners();
+  }
+
+  void _setUsingPromo(bool usingPromo) {
+    _isUsingPromo = usingPromo;
     notifyListeners();
   }
 
@@ -149,4 +207,12 @@ class TicketProvider with ChangeNotifier {
   int get totalTicketsPurchased {
     return _purchaseHistory.fold(0, (sum, purchase) => sum + purchase.ticketsReceived);
   }
+
+  // Calculer le total de tickets obtenus via codes promo
+  int get totalTicketsFromPromo {
+    return _promoHistory.fold(0, (sum, promo) => sum + promo.ticketsReceived);
+  }
+
+  // Calculer le nombre de codes promo utilisés
+  int get totalPromoCodesUsed => _promoHistory.length;
 }

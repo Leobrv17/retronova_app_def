@@ -1,10 +1,11 @@
-// lib/presentation/screens/store/store_screen.dart
+// lib/presentation/screens/store/store_screen.dart - Version avec codes promo
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../providers/ticket_provider.dart';
 import '../../../models/ticket_offer_model.dart';
 import '../../../models/ticket_purchase_model.dart';
+import '../../../models/promo_code_model.dart';
 
 class StoreScreen extends StatefulWidget {
   const StoreScreen({super.key});
@@ -15,11 +16,12 @@ class StoreScreen extends StatefulWidget {
 
 class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _promoCodeController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this); // Maintenant 4 tabs
 
     // Charger les données au démarrage
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -31,6 +33,7 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
   @override
   void dispose() {
     _tabController.dispose();
+    _promoCodeController.dispose();
     super.dispose();
   }
 
@@ -41,8 +44,10 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
         title: const Text(AppStrings.storeLabel),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Offres', icon: Icon(Icons.shopping_cart)),
+            Tab(text: 'Codes Promo', icon: Icon(Icons.redeem)),
             Tab(text: 'Mon Solde', icon: Icon(Icons.account_balance_wallet)),
             Tab(text: 'Historique', icon: Icon(Icons.history)),
           ],
@@ -54,6 +59,7 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
             controller: _tabController,
             children: [
               _buildOffersTab(ticketProvider),
+              _buildPromoTab(ticketProvider), // NOUVEAU TAB
               _buildBalanceTab(ticketProvider),
               _buildHistoryTab(ticketProvider),
             ],
@@ -109,6 +115,296 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
         },
       ),
     );
+  }
+
+  // NOUVEAU TAB POUR LES CODES PROMO
+  Widget _buildPromoTab(TicketProvider ticketProvider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Section utilisation de code promo
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.redeem,
+                        color: Colors.deepPurple,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Utiliser un code promo',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Entrez votre code promo pour obtenir des tickets gratuits !',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _promoCodeController,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: InputDecoration(
+                            labelText: 'Code promo',
+                            hintText: 'Ex: WELCOME10',
+                            prefixIcon: const Icon(Icons.confirmation_number),
+                            border: const OutlineInputBorder(),
+                            errorText: ticketProvider.errorMessage,
+                          ),
+                          onChanged: (_) {
+                            if (ticketProvider.errorMessage != null) {
+                              ticketProvider.clearError();
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: ticketProvider.isUsingPromo
+                            ? null
+                            : () => _usePromoCode(ticketProvider),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+                        child: ticketProvider.isUsingPromo
+                            ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 2,
+                          ),
+                        )
+                            : const Text('Utiliser'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Historique des codes promo
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.history,
+                        color: Colors.green,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Codes promo utilisés',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (ticketProvider.promoHistory.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Column(
+                          children: [
+                            Icon(Icons.inbox_outlined, size: 48, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text(
+                              'Aucun code promo utilisé',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: ticketProvider.promoHistory.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final promo = ticketProvider.promoHistory[index];
+                        return _buildPromoHistoryCard(promo);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Statistiques des codes promo
+          if (ticketProvider.promoHistory.isNotEmpty) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Statistiques codes promo',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildStatRow(
+                      'Codes utilisés',
+                      '${ticketProvider.totalPromoCodesUsed}',
+                      Icons.redeem,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      'Tickets obtenus',
+                      '${ticketProvider.totalTicketsFromPromo}',
+                      Icons.confirmation_number,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoHistoryCard(PromoCodeHistoryItem promo) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          Icons.check_circle,
+          color: Colors.green,
+        ),
+      ),
+      title: Text(
+        promo.code,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontFamily: 'monospace',
+        ),
+      ),
+      subtitle: Text(
+        _formatDate(promo.usedAt),
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '+${promo.ticketsReceived}',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.green,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _usePromoCode(TicketProvider ticketProvider) async {
+    final code = _promoCodeController.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez entrer un code promo'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final success = await ticketProvider.usePromoCode(code);
+
+    if (mounted) {
+      if (success) {
+        _promoCodeController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Code promo utilisé !',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text('Votre nouveau solde : ${ticketProvider.ticketBalance} tickets'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Voir le solde',
+              textColor: Colors.white,
+              onPressed: () => _tabController.animateTo(2), // Tab "Mon Solde"
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ticketProvider.errorMessage ?? 'Erreur lors de l\'utilisation du code promo',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildOfferCard(TicketOfferModel offer, TicketProvider ticketProvider) {
@@ -345,7 +641,7 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
             const SizedBox(height: 32),
 
             // Statistiques
-            if (ticketProvider.purchaseHistory.isNotEmpty) ...[
+            if (ticketProvider.purchaseHistory.isNotEmpty || ticketProvider.promoHistory.isNotEmpty) ...[
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -360,18 +656,28 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildStatRow(
-                        'Total dépensé',
-                        '${ticketProvider.totalSpent.toStringAsFixed(2)}€',
-                        Icons.euro,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildStatRow(
-                        'Tickets achetés',
-                        '${ticketProvider.totalTicketsPurchased}',
-                        Icons.confirmation_number,
-                      ),
-                      const SizedBox(height: 8),
+                      if (ticketProvider.purchaseHistory.isNotEmpty) ...[
+                        _buildStatRow(
+                          'Total dépensé',
+                          '${ticketProvider.totalSpent.toStringAsFixed(2)}€',
+                          Icons.euro,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildStatRow(
+                          'Tickets achetés',
+                          '${ticketProvider.totalTicketsPurchased}',
+                          Icons.shopping_cart,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      if (ticketProvider.promoHistory.isNotEmpty) ...[
+                        _buildStatRow(
+                          'Tickets via promo',
+                          '${ticketProvider.totalTicketsFromPromo}',
+                          Icons.redeem,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       _buildStatRow(
                         'Achats effectués',
                         '${ticketProvider.purchaseHistory.length}',
@@ -385,19 +691,35 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
 
             const SizedBox(height: 32),
 
-            // Bouton pour aller aux offres
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _tabController.animateTo(0),
-                icon: const Icon(Icons.shopping_cart),
-                label: const Text('Acheter plus de tickets'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            // Boutons d'action
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _tabController.animateTo(0),
+                    icon: const Icon(Icons.shopping_cart),
+                    label: const Text('Acheter tickets'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _tabController.animateTo(1),
+                    icon: const Icon(Icons.redeem),
+                    label: const Text('Code promo'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -429,7 +751,9 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
   }
 
   Widget _buildHistoryTab(TicketProvider ticketProvider) {
-    if (ticketProvider.purchaseHistory.isEmpty) {
+    final hasHistory = ticketProvider.purchaseHistory.isNotEmpty || ticketProvider.promoHistory.isNotEmpty;
+
+    if (!hasHistory) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -437,12 +761,12 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
             const Icon(Icons.history, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             const Text(
-              'Aucun achat effectué',
+              'Aucun historique disponible',
               style: TextStyle(fontSize: 18, color: Colors.grey),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Vos achats de tickets apparaîtront ici',
+              'Vos achats et codes promo apparaîtront ici',
               style: TextStyle(color: Colors.grey),
               textAlign: TextAlign.center,
             ),
@@ -457,31 +781,53 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
     }
 
     return RefreshIndicator(
-      onRefresh: () => ticketProvider.loadPurchaseHistory(),
+      onRefresh: () async {
+        await ticketProvider.loadPurchaseHistory();
+        await ticketProvider.loadPromoHistory();
+      },
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: ticketProvider.purchaseHistory.length,
+        itemCount: ticketProvider.purchaseHistory.length + ticketProvider.promoHistory.length,
         itemBuilder: (context, index) {
-          final purchase = ticketProvider.purchaseHistory[index];
-          return _buildHistoryCard(purchase);
+          // Fusionner et trier les historiques par date
+          final allHistory = <dynamic>[];
+          allHistory.addAll(ticketProvider.purchaseHistory);
+          allHistory.addAll(ticketProvider.promoHistory);
+
+          // Trier par date décroissante
+          allHistory.sort((a, b) {
+            DateTime dateA = a is TicketPurchaseModel ? a.createdAt : a.usedAt;
+            DateTime dateB = b is TicketPurchaseModel ? b.createdAt : b.usedAt;
+            return dateB.compareTo(dateA);
+          });
+
+          final item = allHistory[index];
+
+          if (item is TicketPurchaseModel) {
+            return _buildPurchaseHistoryCard(item);
+          } else if (item is PromoCodeHistoryItem) {
+            return _buildPromoHistoryCardInHistory(item);
+          }
+
+          return const SizedBox.shrink();
         },
       ),
     );
   }
 
-  Widget _buildHistoryCard(TicketPurchaseModel purchase) {
+  Widget _buildPurchaseHistoryCard(TicketPurchaseModel purchase) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
+            color: Colors.deepPurple.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(
-            Icons.check_circle,
-            color: Colors.green,
+            Icons.shopping_cart,
+            color: Colors.deepPurple,
           ),
         ),
         title: Text(
@@ -499,6 +845,42 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.deepPurple,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromoHistoryCardInHistory(PromoCodeHistoryItem promo) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.redeem,
+            color: Colors.green,
+          ),
+        ),
+        title: Text(
+          'Code promo ${promo.code}',
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          _formatDate(promo.usedAt),
+        ),
+        trailing: Text(
+          '+${promo.ticketsReceived}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.green,
           ),
         ),
       ),
@@ -670,7 +1052,7 @@ class _StoreScreenState extends State<StoreScreen> with TickerProviderStateMixin
         action: SnackBarAction(
           label: 'Voir le solde',
           textColor: Colors.white,
-          onPressed: () => _tabController.animateTo(1),
+          onPressed: () => _tabController.animateTo(2),
         ),
       ),
     );
